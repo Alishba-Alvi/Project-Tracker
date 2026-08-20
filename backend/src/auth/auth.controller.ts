@@ -24,4 +24,16 @@ export class AuthController {
   getMe(@Req() req: Request) {
     return req.user;
   }
+
+  @Post('refresh')
+  refresh(@Body('userId') userId: string, @Body('refreshToken') refreshToken: string) {
+    return this.authService.refresh(userId, refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@Req() req: Request) {
+    const user = req.user as { userId: string };
+    return this.authService.logout(user.userId);
+  }
 }
