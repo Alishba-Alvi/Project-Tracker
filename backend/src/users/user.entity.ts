@@ -17,6 +17,9 @@ export class User {
   @Column({ default: 'user' })
   systemRole!: 'admin' | 'user';
 
+  @Column({ type: 'varchar', nullable: true })
+  refreshTokenHash!: string | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

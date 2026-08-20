@@ -1,15 +1,20 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {
@@ -32,5 +37,58 @@ export class AuthService {
 
     const { passwordHash: _, ...result } = saved;
     return result;
+  }
+
+  async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+    const user = await this.usersRepository.findOne({
+      where: { email: dto.email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.issueTokens(user);
+  }
+
+  async refresh(userId: string, incomingRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const matches = await bcrypt.compare(incomingRefreshToken, user.refreshTokenHash);
+    if (!matches) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    // rotation: issuing new tokens invalidates the old refresh token
+    return this.issueTokens(user);
+  }
+
+  async logout(userId: string): Promise<void> {
+    await this.usersRepository.update(userId, { refreshTokenHash: null });
+  }
+
+  private async issueTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+    const payload = { sub: user.id, email: user.email, role: user.systemRole };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('JWT_REFRESH_SECRET'),
+      expiresIn: '7d',
+    });
+
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    await this.usersRepository.update(user.id, { refreshTokenHash });
+
+    return { accessToken, refreshToken };
   }
 }
