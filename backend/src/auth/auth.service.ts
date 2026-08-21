@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { User } from '../users/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -17,7 +18,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {
+  async register(dto: RegisterDto): Promise<Omit<User, 'passwordHash' | 'refreshTokenHash'>> {
     const existing = await this.usersRepository.findOne({
       where: { email: dto.email },
     });
@@ -35,7 +36,7 @@ export class AuthService {
 
     const saved = await this.usersRepository.save(user);
 
-    const { passwordHash: _, ...result } = saved;
+    const { passwordHash: _, refreshTokenHash: __, ...result } = saved;
     return result;
   }
 
@@ -56,30 +57,30 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-async refresh(incomingRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-  let payload: { sub: string };
+  async refresh(incomingRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    let payload: { sub: string; jti: string };
 
-  try {
-    payload = await this.jwtService.verifyAsync(incomingRefreshToken, {
-      secret: this.configService.get('JWT_REFRESH_SECRET'),
-    });
-  } catch {
-    throw new UnauthorizedException('Invalid or expired refresh token');
+    try {
+      payload = await this.jwtService.verifyAsync(incomingRefreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id: payload.sub } });
+
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const matches = await bcrypt.compare(payload.jti, user.refreshTokenHash);
+    if (!matches) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    return this.issueTokens(user);
   }
-
-  const user = await this.usersRepository.findOne({ where: { id: payload.sub } });
-
-  if (!user || !user.refreshTokenHash) {
-    throw new UnauthorizedException('Invalid refresh token');
-  }
-
-  const matches = await bcrypt.compare(incomingRefreshToken, user.refreshTokenHash);
-  if (!matches) {
-    throw new UnauthorizedException('Invalid refresh token');
-  }
-
-  return this.issueTokens(user);
-}
 
   async logout(userId: string): Promise<void> {
     await this.usersRepository.update(userId, { refreshTokenHash: null });
@@ -90,12 +91,17 @@ async refresh(incomingRefreshToken: string): Promise<{ accessToken: string; refr
 
     const accessToken = await this.jwtService.signAsync(payload);
 
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get('JWT_REFRESH_SECRET'),
-      expiresIn: '7d',
-    });
+    const jti = randomUUID();
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshToken = await this.jwtService.signAsync(
+      { ...payload, jti },
+      {
+        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        expiresIn: '7d',
+      },
+    );
+
+    const refreshTokenHash = await bcrypt.hash(jti, 10);
     await this.usersRepository.update(user.id, { refreshTokenHash });
 
     return { accessToken, refreshToken };
