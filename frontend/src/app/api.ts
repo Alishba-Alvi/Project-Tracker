@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from './store';
-import { setCredentials } from '../features/auth/authSlice';
+import { setCredentials, logout } from '../features/auth/authSlice';
 
 interface AuthResponse {
   accessToken: string;
@@ -79,6 +79,16 @@ export const api = createApi({
         method: 'POST',
       }),
     }),
+    logoutUser: builder.mutation<{ success: boolean }, void>({
+      query: () => ({
+        url: 'auth/logout',
+        method: 'POST',
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(logout());
+      },
+    }),
   }),
 });
 
@@ -88,4 +98,5 @@ export const {
   useLoginMutation,
   useGetMeQuery,
   useRefreshMutation,
+  useLogoutUserMutation,
 } = api;
