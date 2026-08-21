@@ -1,5 +1,5 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Post, Body, Get, UseGuards, Req, Res,UnauthorizedException } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,8 +15,17 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const { accessToken, refreshToken } = await this.authService.login(dto);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: false, // set true in production (requires HTTPS)
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days, matches token expiry
+    });
+
+    return { accessToken };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -25,15 +34,32 @@ export class AuthController {
     return req.user;
   }
 
-  @Post('refresh')
-  refresh(@Body('userId') userId: string, @Body('refreshToken') refreshToken: string) {
-    return this.authService.refresh(userId, refreshToken);
+@Post('refresh')
+async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    throw new UnauthorizedException('No refresh token provided');
   }
+
+  const { accessToken, refreshToken: newRefreshToken } = await this.authService.refresh(refreshToken);
+
+  res.cookie('refreshToken', newRefreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return { accessToken };
+}
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  logout(@Req() req: Request) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = req.user as { userId: string };
-    return this.authService.logout(user.userId);
+    await this.authService.logout(user.userId);
+    res.clearCookie('refreshToken');
+    return { success: true };
   }
 }

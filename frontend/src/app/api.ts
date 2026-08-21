@@ -1,25 +1,46 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import type { RootState } from './store'
+import { setCredentials } from '../features/auth/authSlice'
 
 interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
+  accessToken: string
+  refreshToken: string
 }
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  systemRole: string;
+  id: string
+  name: string
+  email: string
+  systemRole: string
+}
+
+interface MeResponse {
+  userId: string
+  email: string
+  role: string
 }
 
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: 'http://localhost:3000' }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: 'http://localhost:3000',
+    credentials: 'include',
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).auth.accessToken
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`)
+      }
+      return headers
+    },
+  }),
   endpoints: (builder) => ({
     getHealth: builder.query<{ status: string }, void>({
       query: () => 'health',
     }),
-    register: builder.mutation<User, { name: string; email: string; password: string }>({
+    register: builder.mutation<
+      User,
+      { name: string; email: string; password: string }
+    >({
       query: (body) => ({
         url: 'auth/register',
         method: 'POST',
@@ -32,8 +53,36 @@ export const api = createApi({
         method: 'POST',
         body,
       }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        const { data: tokens } = await queryFulfilled
+
+        dispatch(setCredentials({ ...tokens }))
+
+        const meResult = await dispatch(api.endpoints.getMe.initiate())
+        if ('data' in meResult && meResult.data) {
+          dispatch(
+            setCredentials({
+              ...tokens,
+              user: {
+                id: meResult.data.userId,
+                email: meResult.data.email,
+                systemRole: meResult.data.role,
+                name: '',
+              },
+            }),
+          )
+        }
+      },
+    }),
+    getMe: builder.query<MeResponse, void>({
+      query: () => 'auth/me',
     }),
   }),
-});
+})
 
-export const { useGetHealthQuery, useRegisterMutation, useLoginMutation } = api;
+export const {
+  useGetHealthQuery,
+  useRegisterMutation,
+  useLoginMutation,
+  useGetMeQuery,
+} = api

@@ -56,21 +56,30 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  async refresh(userId: string, incomingRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+async refresh(incomingRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  let payload: { sub: string };
 
-    if (!user || !user.refreshTokenHash) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const matches = await bcrypt.compare(incomingRefreshToken, user.refreshTokenHash);
-    if (!matches) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // rotation: issuing new tokens invalidates the old refresh token
-    return this.issueTokens(user);
+  try {
+    payload = await this.jwtService.verifyAsync(incomingRefreshToken, {
+      secret: this.configService.get('JWT_REFRESH_SECRET'),
+    });
+  } catch {
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
+
+  const user = await this.usersRepository.findOne({ where: { id: payload.sub } });
+
+  if (!user || !user.refreshTokenHash) {
+    throw new UnauthorizedException('Invalid refresh token');
+  }
+
+  const matches = await bcrypt.compare(incomingRefreshToken, user.refreshTokenHash);
+  if (!matches) {
+    throw new UnauthorizedException('Invalid refresh token');
+  }
+
+  return this.issueTokens(user);
+}
 
   async logout(userId: string): Promise<void> {
     await this.usersRepository.update(userId, { refreshTokenHash: null });

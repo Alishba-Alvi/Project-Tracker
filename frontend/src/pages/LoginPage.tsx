@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import { useLoginMutation } from '../app/api';
-import { setCredentials } from '../features/auth/authSlice';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [login, { isLoading, error }] = useLoginMutation();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await login({ email, password }).unwrap();
-      dispatch(setCredentials(result));
+      await login({ email, password }).unwrap();
       navigate('/projects');
     } catch (err) {
       // error is already captured by the `error` variable from the hook
