@@ -10,13 +10,13 @@ interface User {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
+  authChecked: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
   accessToken: null,
-  refreshToken: null,
+  authChecked: false,
 };
 
 const authSlice = createSlice({
@@ -25,18 +25,18 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ accessToken: string; refreshToken: string; user?: User }>,
+      action: PayloadAction<{ accessToken: string; user?: User }>,
     ) => {
       state.accessToken = action.payload.accessToken;
-      state.refreshToken = action.payload.refreshToken;
       if (action.payload.user) {
         state.user = action.payload.user;
       }
+      state.authChecked = true;
     },
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
-      state.refreshToken = null;
+      state.authChecked = true;
     },
   },
 });
