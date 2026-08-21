@@ -39,4 +39,12 @@ export class ProjectsService {
       return savedProject;
     });
   }
+
+  async findMyProjects(userId: string): Promise<Project[]> {
+    return this.projectsRepository
+      .createQueryBuilder('project')
+      .innerJoin('project.members', 'member')
+      .where('member.userId = :userId', { userId })
+      .getMany();
+  }
 }
