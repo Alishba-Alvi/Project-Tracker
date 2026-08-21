@@ -28,10 +28,10 @@ const authSlice = createSlice({
       action: PayloadAction<{ accessToken: string; user?: User }>,
     ) => {
       state.accessToken = action.payload.accessToken;
+      state.authChecked = true;
       if (action.payload.user) {
         state.user = action.payload.user;
       }
-      state.authChecked = true;
     },
     logout: (state) => {
       state.user = null;
