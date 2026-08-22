@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
+import { UpdateIssueDto } from './dto/update-issue.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectMemberGuard } from '../projects/project-member.guard';
 
@@ -18,5 +19,19 @@ export class IssuesController {
   ) {
     const user = req.user as { userId: string };
     return this.issuesService.create(projectId, dto, user.userId);
+  }
+
+  @Get(':issueId')
+  findOne(@Param('projectId') projectId: string, @Param('issueId') issueId: string) {
+    return this.issuesService.findOne(projectId, issueId);
+  }
+
+  @Patch(':issueId')
+  update(
+    @Param('projectId') projectId: string,
+    @Param('issueId') issueId: string,
+    @Body() dto: UpdateIssueDto,
+  ) {
+    return this.issuesService.update(projectId, issueId, dto);
   }
 }

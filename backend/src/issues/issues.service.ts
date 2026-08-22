@@ -1,15 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Issue } from './issue.entity';
 import { Project } from '../projects/project.entity';
+import { ProjectMember } from '../projects/project-member.entity';
 import { CreateIssueDto } from './dto/create-issue.dto';
+import { UpdateIssueDto } from './dto/update-issue.dto';
 
 @Injectable()
 export class IssuesService {
   constructor(
     @InjectRepository(Issue)
     private issuesRepository: Repository<Issue>,
+    @InjectRepository(ProjectMember)
+    private membersRepository: Repository<ProjectMember>,
     private dataSource: DataSource,
   ) {}
 
@@ -44,5 +48,38 @@ export class IssuesService {
 
       return manager.save(issue);
     });
+  }
+
+  async findOne(projectId: string, issueId: string): Promise<Issue> {
+    const issue = await this.issuesRepository.findOne({
+      where: { id: issueId, projectId },
+    });
+    if (!issue) {
+      throw new NotFoundException('Issue not found');
+    }
+    return issue;
+  }
+
+  async update(projectId: string, issueId: string, dto: UpdateIssueDto): Promise<Issue> {
+    const issue = await this.findOne(projectId, issueId);
+
+    if (dto.assigneeId !== undefined && dto.assigneeId !== null) {
+      const membership = await this.membersRepository.findOne({
+        where: { projectId, userId: dto.assigneeId },
+      });
+      if (!membership) {
+        throw new BadRequestException('Assignee must be a member of this project');
+      }
+    }
+
+    Object.assign(issue, {
+      ...(dto.title !== undefined && { title: dto.title }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.type !== undefined && { type: dto.type }),
+      ...(dto.priority !== undefined && { priority: dto.priority }),
+      ...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
+    });
+
+    return this.issuesRepository.save(issue);
   }
 }
