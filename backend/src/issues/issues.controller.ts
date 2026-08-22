@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
@@ -6,6 +17,7 @@ import { UpdateIssueDto } from './dto/update-issue.dto';
 import { ListIssuesDto } from './dto/list-issues.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectMemberGuard } from '../projects/project-member.guard';
+import { ProjectLeadGuard } from '../projects/project-lead.guard';
 
 @UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @Controller('projects/:projectId/issues')
@@ -39,5 +51,11 @@ export class IssuesController {
     @Body() dto: UpdateIssueDto,
   ) {
     return this.issuesService.update(projectId, issueId, dto);
+  }
+
+  @UseGuards(ProjectLeadGuard)
+  @Delete(':issueId')
+  remove(@Param('projectId') projectId: string, @Param('issueId') issueId: string) {
+    return this.issuesService.remove(projectId, issueId);
   }
 }

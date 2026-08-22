@@ -82,58 +82,65 @@ export class IssuesService {
 
     return this.issuesRepository.save(issue);
   }
+
   async findAll(
-  projectId: string,
-  filters: {
-    status?: string;
-    assigneeId?: string;
-    type?: string;
-    priority?: string;
-    page?: number;
-    limit?: number;
-    sortBy?: 'createdAt' | 'priority' | 'status';
-    sortOrder?: 'ASC' | 'DESC';
-  },
-): Promise<{ data: Issue[]; total: number; page: number; limit: number }> {
-  const page = filters.page && filters.page > 0 ? filters.page : 1;
-  const limit = filters.limit && filters.limit > 0 && filters.limit <= 100 ? filters.limit : 20;
-  const sortBy = filters.sortBy || 'createdAt';
-  const sortOrder = filters.sortOrder || 'DESC';
+    projectId: string,
+    filters: {
+      status?: string;
+      assigneeId?: string;
+      type?: string;
+      priority?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: 'createdAt' | 'priority' | 'status';
+      sortOrder?: 'ASC' | 'DESC';
+    },
+  ): Promise<{ data: Issue[]; total: number; page: number; limit: number }> {
+    const page = filters.page && filters.page > 0 ? filters.page : 1;
+    const limit = filters.limit && filters.limit > 0 && filters.limit <= 100 ? filters.limit : 20;
+    const sortBy = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder || 'DESC';
 
-  const query = this.issuesRepository
-    .createQueryBuilder('issue')
-    .where('issue.projectId = :projectId', { projectId });
+    const query = this.issuesRepository
+      .createQueryBuilder('issue')
+      .where('issue.projectId = :projectId', { projectId });
 
-  if (filters.status) {
-    query.andWhere('issue.status = :status', { status: filters.status });
+    if (filters.status) {
+      query.andWhere('issue.status = :status', { status: filters.status });
+    }
+    if (filters.assigneeId) {
+      query.andWhere('issue.assigneeId = :assigneeId', { assigneeId: filters.assigneeId });
+    }
+    if (filters.type) {
+      query.andWhere('issue.type = :type', { type: filters.type });
+    }
+    if (filters.priority) {
+      query.andWhere('issue.priority = :priority', { priority: filters.priority });
+    }
+
+    if (sortBy === 'priority') {
+      query.orderBy(
+        `CASE issue.priority
+          WHEN 'low' THEN 1
+          WHEN 'medium' THEN 2
+          WHEN 'high' THEN 3
+          WHEN 'critical' THEN 4
+        END`,
+        sortOrder,
+      );
+    } else {
+      query.orderBy(`issue.${sortBy}`, sortOrder);
+    }
+
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return { data, total, page, limit };
   }
-  if (filters.assigneeId) {
-    query.andWhere('issue.assigneeId = :assigneeId', { assigneeId: filters.assigneeId });
-  }
-  if (filters.type) {
-    query.andWhere('issue.type = :type', { type: filters.type });
-  }
-  if (filters.priority) {
-    query.andWhere('issue.priority = :priority', { priority: filters.priority });
-  }
 
-  if (sortBy === 'priority') {
-  query.orderBy(
-    `CASE issue.priority
-      WHEN 'low' THEN 1
-      WHEN 'medium' THEN 2
-      WHEN 'high' THEN 3
-      WHEN 'critical' THEN 4
-    END`,
-    sortOrder,
-  );
-} else {
-  query.orderBy(`issue.${sortBy}`, sortOrder);
-}
-  query.skip((page - 1) * limit).take(limit);
-
-  const [data, total] = await query.getManyAndCount();
-
-  return { data, total, page, limit };
-}
+  async remove(projectId: string, issueId: string): Promise<void> {
+    const issue = await this.findOne(projectId, issueId);
+    await this.issuesRepository.remove(issue);
+  }
 }
