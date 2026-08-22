@@ -18,12 +18,14 @@ import { ListIssuesDto } from './dto/list-issues.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectMemberGuard } from '../projects/project-member.guard';
 import { ProjectLeadGuard } from '../projects/project-lead.guard';
+import { ProjectWriteGuard } from '../projects/project-write.guard';
 
 @UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @Controller('projects/:projectId/issues')
 export class IssuesController {
   constructor(private issuesService: IssuesService) {}
 
+  @UseGuards(ProjectWriteGuard)
   @Post()
   create(
     @Param('projectId') projectId: string,
@@ -44,6 +46,7 @@ export class IssuesController {
     return this.issuesService.findOne(projectId, issueId);
   }
 
+  @UseGuards(ProjectWriteGuard)
   @Patch(':issueId')
   update(
     @Param('projectId') projectId: string,
