@@ -19,8 +19,18 @@ interface MeResponse {
   role: string;
 }
 
+interface Project {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  isArchived: boolean;
+  createdAt: string;
+}
+
 export const api = createApi({
   reducerPath: 'api',
+  tagTypes: ['Project'],
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:3000',
     credentials: 'include',
@@ -89,6 +99,18 @@ export const api = createApi({
         dispatch(logout());
       },
     }),
+    getMyProjects: builder.query<Project[], void>({
+      query: () => 'projects',
+      providesTags: ['Project'],
+    }),
+    createProject: builder.mutation<Project, { key: string; name: string; description: string }>({
+      query: (body) => ({
+        url: 'projects',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Project'],
+    }),
   }),
 });
 
@@ -99,4 +121,6 @@ export const {
   useGetMeQuery,
   useRefreshMutation,
   useLogoutUserMutation,
+  useGetMyProjectsQuery,
+  useCreateProjectMutation,
 } = api;
