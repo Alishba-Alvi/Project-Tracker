@@ -28,9 +28,16 @@ interface Project {
   createdAt: string;
 }
 
+interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  projectRole: 'lead' | 'member' | 'viewer';
+}
+
 export const api = createApi({
   reducerPath: 'api',
-  tagTypes: ['Project'],
+  tagTypes: ['Project', 'ProjectMember'],
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:3000',
     credentials: 'include',
@@ -111,6 +118,31 @@ export const api = createApi({
       }),
       invalidatesTags: ['Project'],
     }),
+    getProjectMembers: builder.query<ProjectMember[], string>({
+      query: (projectId) => `projects/${projectId}/members`,
+      providesTags: ['ProjectMember'],
+    }),
+    addProjectMember: builder.mutation<
+      ProjectMember,
+      { projectId: string; userId: string; projectRole: string }
+    >({
+      query: ({ projectId, ...body }) => ({
+        url: `projects/${projectId}/members`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['ProjectMember'],
+    }),
+    removeProjectMember: builder.mutation<void, { projectId: string; userId: string }>({
+      query: ({ projectId, userId }) => ({
+        url: `projects/${projectId}/members/${userId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['ProjectMember'],
+    }),
+    searchUserByEmail: builder.query<User, string>({
+      query: (email) => `users/search?email=${encodeURIComponent(email)}`,
+    }),
   }),
 });
 
@@ -123,4 +155,8 @@ export const {
   useLogoutUserMutation,
   useGetMyProjectsQuery,
   useCreateProjectMutation,
+  useGetProjectMembersQuery,
+  useAddProjectMemberMutation,
+  useRemoveProjectMemberMutation,
+  useLazySearchUserByEmailQuery,
 } = api;

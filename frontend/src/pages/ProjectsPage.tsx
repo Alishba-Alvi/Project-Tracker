@@ -1,31 +1,32 @@
-import { useState } from 'react';
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useGetMyProjectsQuery,
   useCreateProjectMutation,
   useLogoutUserMutation,
-} from '../app/api';
+} from '../app/api'
 
 function ProjectsPage() {
-  const { data: projects, isLoading, error } = useGetMyProjectsQuery();
+  const { data: projects, isLoading, error } = useGetMyProjectsQuery()
   const [createProject, { isLoading: isCreating, error: createError }] =
-    useCreateProjectMutation();
-  const [logoutUser] = useLogoutUserMutation();
+    useCreateProjectMutation()
+  const [logoutUser] = useLogoutUserMutation()
 
-  const [key, setKey] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [key, setKey] = useState('')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     try {
-      await createProject({ key, name, description }).unwrap();
-      setKey('');
-      setName('');
-      setDescription('');
+      await createProject({ key, name, description }).unwrap()
+      setKey('')
+      setName('')
+      setDescription('')
     } catch (err) {
       // error state already captured by createError
     }
-  };
+  }
 
   return (
     <div>
@@ -64,7 +65,8 @@ function ProjectsPage() {
         </div>
         {createError && (
           <p style={{ color: 'red' }}>
-            Could not create project — check the key is unique and correctly formatted.
+            Could not create project — check the key is unique and correctly
+            formatted.
           </p>
         )}
         <button type="submit" disabled={isCreating}>
@@ -82,12 +84,13 @@ function ProjectsPage() {
             <li key={project.id}>
               <strong>{project.key}</strong> — {project.name}
               {project.description && <p>{project.description}</p>}
+              <Link to={`/projects/${project.id}/members`}>Manage members</Link>
             </li>
           ))}
         </ul>
       )}
     </div>
-  );
+  )
 }
 
-export default ProjectsPage;
+export default ProjectsPage

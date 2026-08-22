@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProjectsPage from './pages/ProjectsPage';
+import MembersPage from './pages/MembersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { api } from './app/api';
 import { setCredentials, logout } from './features/auth/authSlice';
@@ -56,6 +57,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId/members" element={<MembersPage />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/login" replace />} />
