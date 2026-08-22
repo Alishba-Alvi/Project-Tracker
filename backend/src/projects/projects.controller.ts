@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Body,
   Param,
@@ -15,6 +16,7 @@ import { AddMemberDto } from './dto/add-member.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectMemberGuard } from './project-member.guard';
 import { ProjectLeadGuard } from './project-lead.guard';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('projects')
@@ -53,4 +55,13 @@ export class ProjectsController {
   ) {
     return this.projectsService.removeMember(projectId, userId);
   }
+  @UseGuards(ProjectMemberGuard, ProjectLeadGuard)
+@Patch(':projectId/members/:userId')
+updateMemberRole(
+  @Param('projectId') projectId: string,
+  @Param('userId') userId: string,
+  @Body() dto: UpdateMemberRoleDto,
+) {
+  return this.projectsService.updateMemberRole(projectId, userId, dto);
+}
 }

@@ -5,6 +5,7 @@ import { Project } from './project.entity';
 import { ProjectMember } from './project-member.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -88,4 +89,28 @@ export class ProjectsService {
   async listMembers(projectId: string): Promise<ProjectMember[]> {
     return this.membersRepository.find({ where: { projectId } });
   }
+  async updateMemberRole(
+  projectId: string,
+  targetUserId: string,
+  dto: UpdateMemberRoleDto,
+): Promise<ProjectMember> {
+  const membership = await this.membersRepository.findOne({
+    where: { projectId, userId: targetUserId },
+  });
+  if (!membership) {
+    throw new NotFoundException('That user is not a member of this project');
+  }
+
+  if (membership.projectRole === 'lead' && dto.projectRole !== 'lead') {
+    const remainingLeads = await this.membersRepository.count({
+      where: { projectId, projectRole: 'lead' },
+    });
+    if (remainingLeads <= 1) {
+      throw new ConflictException('Cannot demote the last remaining Lead from a project');
+    }
+  }
+
+  membership.projectRole = dto.projectRole;
+  return this.membersRepository.save(membership);
+}
 }
