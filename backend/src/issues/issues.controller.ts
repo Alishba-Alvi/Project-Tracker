@@ -1,8 +1,9 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
+import { ListIssuesDto } from './dto/list-issues.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectMemberGuard } from '../projects/project-member.guard';
 
@@ -19,6 +20,11 @@ export class IssuesController {
   ) {
     const user = req.user as { userId: string };
     return this.issuesService.create(projectId, dto, user.userId);
+  }
+
+  @Get()
+  findAll(@Param('projectId') projectId: string, @Query() query: ListIssuesDto) {
+    return this.issuesService.findAll(projectId, query);
   }
 
   @Get(':issueId')
