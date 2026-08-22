@@ -117,7 +117,19 @@ export class IssuesService {
     query.andWhere('issue.priority = :priority', { priority: filters.priority });
   }
 
+  if (sortBy === 'priority') {
+  query.orderBy(
+    `CASE issue.priority
+      WHEN 'low' THEN 1
+      WHEN 'medium' THEN 2
+      WHEN 'high' THEN 3
+      WHEN 'critical' THEN 4
+    END`,
+    sortOrder,
+  );
+} else {
   query.orderBy(`issue.${sortBy}`, sortOrder);
+}
   query.skip((page - 1) * limit).take(limit);
 
   const [data, total] = await query.getManyAndCount();
