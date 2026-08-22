@@ -11,12 +11,14 @@ function MembersPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: members, isLoading, error } = useGetProjectMembersQuery(projectId!);
   const [addMember, { isLoading: isAdding, error: addError }] = useAddProjectMemberMutation();
-  const [removeMember] = useRemoveProjectMemberMutation();
+  const [removeMember, { isLoading: isRemoving }] = useRemoveProjectMemberMutation();
   const [searchUser, { data: foundUser, isFetching: isSearching, error: searchError }] =
     useLazySearchUserByEmailQuery();
 
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'lead' | 'member' | 'viewer'>('member');
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +36,18 @@ function MembersPage() {
   };
 
   const handleRemove = async (targetUserId: string) => {
+    setRemoveError(null);
+    setRemovingUserId(targetUserId);
     try {
       await removeMember({ projectId: projectId!, userId: targetUserId }).unwrap();
     } catch (err) {
-      alert('Could not remove this member — you may not have permission, or they may be the last Lead.');
+      const fetchError = err as { data?: { message?: string } };
+      setRemoveError(
+        fetchError?.data?.message ??
+          'Could not remove this member — you may not have permission, or they may be the last Lead.',
+      );
+    } finally {
+      setRemovingUserId(null);
     }
   };
 
@@ -48,13 +58,19 @@ function MembersPage() {
 
       {isLoading && <p>Loading members...</p>}
       {error && <p style={{ color: 'red' }}>Failed to load members (you may not have access to this project).</p>}
+      {removeError && <p style={{ color: 'red' }}>{removeError}</p>}
 
       {members && (
         <ul>
           {members.map((m) => (
             <li key={m.id}>
               {m.userId} — {m.projectRole}{' '}
-              <button onClick={() => handleRemove(m.userId)}>Remove</button>
+              <button
+                onClick={() => handleRemove(m.userId)}
+                disabled={isRemoving && removingUserId === m.userId}
+              >
+                {isRemoving && removingUserId === m.userId ? 'Removing...' : 'Remove'}
+              </button>
             </li>
           ))}
         </ul>
