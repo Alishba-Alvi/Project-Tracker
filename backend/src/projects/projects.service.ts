@@ -1,15 +1,18 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Project } from './project.entity';
 import { ProjectMember } from './project-member.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { AddMemberDto } from './dto/add-member.dto';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private projectsRepository: Repository<Project>,
+    @InjectRepository(ProjectMember)
+    private membersRepository: Repository<ProjectMember>,
     private dataSource: DataSource,
   ) {}
 
@@ -46,5 +49,43 @@ export class ProjectsService {
       .innerJoin('project.members', 'member')
       .where('member.userId = :userId', { userId })
       .getMany();
+  }
+
+  async addMember(projectId: string, dto: AddMemberDto): Promise<ProjectMember> {
+    const existing = await this.membersRepository.findOne({
+      where: { projectId, userId: dto.userId },
+    });
+    if (existing) {
+      throw new ConflictException('User is already a member of this project');
+    }
+
+    const membership = this.membersRepository.create({
+      projectId,
+      userId: dto.userId,
+      projectRole: dto.projectRole,
+    });
+    return this.membersRepository.save(membership);
+  }
+
+  async removeMember(projectId: string, targetUserId: string): Promise<void> {
+    const membership = await this.membersRepository.findOne({
+      where: { projectId, userId: targetUserId },
+    });
+    if (!membership) {
+      throw new NotFoundException('That user is not a member of this project');
+    }
+
+    const remainingLeads = await this.membersRepository.count({
+      where: { projectId, projectRole: 'lead' },
+    });
+    if (membership.projectRole === 'lead' && remainingLeads <= 1) {
+      throw new ConflictException('Cannot remove the last remaining Lead from a project');
+    }
+
+    await this.membersRepository.remove(membership);
+  }
+
+  async listMembers(projectId: string): Promise<ProjectMember[]> {
+    return this.membersRepository.find({ where: { projectId } });
   }
 }
