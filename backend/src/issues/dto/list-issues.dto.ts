@@ -1,4 +1,4 @@
-import { IsOptional, IsIn, IsUUID, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsIn, IsUUID, IsInt, Min, Max, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ListIssuesDto {
@@ -17,6 +17,10 @@ export class ListIssuesDto {
   @IsOptional()
   @IsIn(['low', 'medium', 'high', 'critical'])
   priority?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @IsOptional()
   @Type(() => Number)

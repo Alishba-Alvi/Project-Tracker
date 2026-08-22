@@ -90,6 +90,7 @@ export class IssuesService {
       assigneeId?: string;
       type?: string;
       priority?: string;
+      search?: string;
       page?: number;
       limit?: number;
       sortBy?: 'createdAt' | 'priority' | 'status';
@@ -116,6 +117,14 @@ export class IssuesService {
     }
     if (filters.priority) {
       query.andWhere('issue.priority = :priority', { priority: filters.priority });
+    }
+
+    const search = filters.search?.trim();
+    if (search) {
+      query.andWhere(
+        '(issue.title ILIKE :search OR issue.description ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
 
     if (sortBy === 'priority') {
