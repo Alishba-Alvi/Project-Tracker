@@ -23,6 +23,14 @@ export class ListIssuesDto {
   search?: string;
 
   @IsOptional()
+  @IsUUID()
+  epicId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  labelId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

@@ -23,4 +23,12 @@ export class UpdateIssueDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  epicId?: string | null;
+
+  @IsOptional()
+  @IsUUID(undefined, { each: true })
+  labelIds?: string[];
 }

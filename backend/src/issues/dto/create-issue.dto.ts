@@ -1,4 +1,4 @@
-import { IsString, IsIn, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { IsString, IsIn, MinLength, MaxLength, IsOptional, IsUUID } from 'class-validator';
 import type { IssueType, IssuePriority } from '../issue.entity';
 
 export class CreateIssueDto {
@@ -16,4 +16,12 @@ export class CreateIssueDto {
 
   @IsIn(['low', 'medium', 'high', 'critical'])
   priority!: IssuePriority;
+
+  @IsOptional()
+  @IsUUID()
+  epicId?: string;
+
+  @IsOptional()
+  @IsUUID(undefined, { each: true })
+  labelIds?: string[];
 }
